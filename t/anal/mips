@@ -12,3 +12,30 @@ ao 1~type[2]
 EXPECT='(cjmp)
 '
 run_test
+
+# Test that branch and jump back references record the disassembled address instead of NULL
+# ex:
+#   80100000: 00000000  nop
+#   80100004:	00000000 	nop
+#   80100008:	01000010 	b	0x80100010
+#   8010000c:	00000000 	nop
+#   80100010:	00000000  nop  <__ should report a JUMP XREF from fcn.80100008 instead of 0 UNK
+NAME="mips LE back reference"
+BROKEN=
+FILE=malloc://32
+ARGS='-m 0x80100000'
+CMDS='
+wx 0000000000000000010000100000000000000000
+e asm.arch=mips
+e asm.bits=32
+af+ 0x80100000 20 fcn.test
+pdf
+'
+EXPECT='/ (fcn) fcn.test 20
+|          0x80100000    00000000     nop
+|          0x80100004    00000000     nop
+|      ,=< 0x80100008    01000010     b 0x80100010 ; (fcn.test)
+|      |   0x8010000c    00000000     nop
+\      `-> 0x80100010    00000000     nop
+'
+run_test
